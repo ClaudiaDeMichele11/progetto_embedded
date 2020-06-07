@@ -95,7 +95,6 @@ osSemaphoreId myBinarySem03Handle;
 char str_tmp2[30];
 char str_tmp4[30];
 char str_tmp5[30];
-char arrivato[20]="arrivato\r\n";
 int delay = 1500;
 int messaggioInviato = 0;
 int messaggioTrasmesso = 0;
@@ -820,7 +819,6 @@ void StartTaskBottone(void const * argument)
   {
 	  osDelay(150);
 	  osSemaphoreWait(myMutex01Handle,osWaitForever);
-	  uint32_t start = HAL_GetTick();
 
 	  	  	  bitstatus = HAL_GPIO_ReadPin(BUTTON_EXTI13_GPIO_Port, BUTTON_EXTI13_Pin);
 
@@ -854,8 +852,6 @@ void StartTaskBottone(void const * argument)
 	  	  		 HAL_UART_Transmit(&huart1,( uint8_t * )msg_disattivato,sizeof(msg_disattivato),HAL_MAX_DELAY);
 	  	  	  }
 
-	  		   uint32_t end = HAL_GetTick();
-	  		   time1 = end - start;
 	  	       osSemaphoreRelease(myMutex01Handle);
   }
   /* USER CODE END 5 */ 
@@ -876,7 +872,6 @@ void StartTaskTemperatura(void const * argument)
 	  {
 		  osDelay(delay);
 		  osSemaphoreWait(myMutex01Handle,osWaitForever);
-		  uint32_t start = HAL_GetTick();
 
 		  //accendo il led verde quando la situazione è normale
 		  if(nTempAlte == 0 && nTempBasse == 0){
@@ -908,7 +903,8 @@ void StartTaskTemperatura(void const * argument)
 		   if(snprintf(str_tmp4,30,"Temperatura = %d.%02d\n\r", tmpInt1,tmpInt2)>0){
 			   HAL_UART_Transmit(&huart1,( uint8_t * )str_tmp4,sizeof(str_tmp4),HAL_MAX_DELAY);
 		   }
-		   //se abbiamo letto molte temperature elevate, sblocchiamo il due e dichiariamo l'incendio
+		   //se abbiamo letto molte temperature elevate, sblocchiamo il task della distanza e dichiariamo l'incendio
+		   // e inviamo un messaggio
 		   if(nTempAlte > nTempValid){
 			   if(b2>0){
 				   b2=0;
@@ -928,8 +924,6 @@ void StartTaskTemperatura(void const * argument)
 			   Temp DataToSend = {0,1};
 			   osMessagePut(myQueue02Handle,(uint32_t)&DataToSend,200);
 		   }
-		   uint32_t end = HAL_GetTick();
-		   time2 = end - start;
 		   osSemaphoreRelease(myMutex01Handle);
 
 	  }
@@ -953,9 +947,8 @@ void StartTaskDistanza(void const * argument)
 			  osDelay(delay);
 
 			  osSemaphoreWait(myMutex01Handle, osWaitForever);
-			  HAL_UART_Transmit(&huart1,( uint8_t * )arrivato,sizeof(arrivato),HAL_MAX_DELAY);
-			  uint32_t start = HAL_GetTick();
 
+			  //ricezione dati
 			  uint16_t temperaturaElevata=0;
 			  tempRicevuta=osMessageGet(myQueue02Handle,200);
 			  temperaturaElevata = (((Temp*)tempRicevuta.value.p)->tempValue);
@@ -983,9 +976,6 @@ void StartTaskDistanza(void const * argument)
 				  b2=1;
 			  }
 
-			  uint32_t end = HAL_GetTick();
-			  time3 = end - start;
-
 			  osSemaphoreRelease(myMutex01Handle);
 			  osSemaphoreWait(myBinarySem02Handle, osWaitForever);
 
@@ -1009,7 +999,6 @@ void StartTaskLed(void const * argument)
 			  {
 				  osDelay(delay);
 				  osSemaphoreWait(myMutex01Handle, osWaitForever);
-				  uint32_t start = HAL_GetTick();
 
 				  if(b2>0 || messaggioTrasmesso == 0){
 					  b3=1;
@@ -1062,9 +1051,6 @@ void StartTaskLed(void const * argument)
 	  				osSemaphoreRelease(myBinarySem03Handle);
 
 				  }
-
-				  uint32_t end = HAL_GetTick();
-				  time4 = end - start;
 
 				  osSemaphoreRelease(myMutex01Handle);
 				  osSemaphoreWait(myBinarySem03Handle, osWaitForever);
